@@ -1,0 +1,62 @@
+CARTEIRA PATRIOTA NORDESTINO — PACOTE DE PREPARAÇÃO CLOUDFLARE
+
+IMPORTANTE
+Este ZIP contém a estrutura inicial para integrar o site com Cloudflare Pages Functions, Cloudflare D1, Google Drive e Cloudflare Access. Não está pronto para publicação pública até que os serviços, IDs, segredos e políticas de acesso sejam configurados e testados. Não há banco ou conta Google criados por este ZIP.
+
+O QUE ESTÁ INCLUÍDO
+- index.html atualizado: telefone obrigatório, foto obrigatória e envio do cadastro para /api/register. O código e a data só aparecem depois de uma resposta positiva do servidor.
+- functions/api/register.js: valida nome, telefone, estado e foto; reserva ID no D1 e envia a foto ao Google Drive sem criar link público.
+- schema.sql: estrutura de cadastros e auditoria.
+- functions/_middleware.js: valida JWT do Cloudflare Access para /admin e /api/admin.
+- admin/index.html e functions/api/admin/registrations.js: tela inicial de consulta administrativa.
+- wrangler.toml e package.json: configuração inicial do projeto.
+
+ETAPA 1 — CLOUDFLARE
+1. Crie/acesse sua conta em https://dash.cloudflare.com/.
+2. Crie um banco D1 chamado carteira-patriota-nordestino.
+3. Copie o database_id real para wrangler.toml no lugar de PREENCHER_COM_O_ID_REAL_DO_D1.
+4. Execute, a partir desta pasta, o comando:
+   npx wrangler d1 execute carteira-patriota-nordestino --remote --file=./schema.sql
+5. No Cloudflare Pages, importe o projeto Git ou publique o conteúdo da pasta como projeto Pages. Recomendo Git para manter histórico e permitir atualizações seguras.
+6. Configure o binding D1 com nome DB apontando para o banco criado. Se usar wrangler.toml, confirme no painel que o binding foi reconhecido na configuração de produção.
+7. Configure estas variáveis no ambiente de produção do Pages:
+   ACCESS_TEAM_DOMAIN = domínio da sua equipe Access, sem https:// (ex.: equipe.cloudflareaccess.com)
+   ACCESS_AUD = Audience (AUD) da aplicação Access
+   GOOGLE_DRIVE_FOLDER_ID = ID da pasta privada do Drive
+8. Cadastre os segredos abaixo no painel de Pages > Settings > Variables and Secrets (Production), como secrets:
+   GOOGLE_CLIENT_ID
+   GOOGLE_CLIENT_SECRET
+   GOOGLE_REFRESH_TOKEN
+   Não os coloque no HTML, no Git ou neste ZIP.
+
+ETAPA 2 — GOOGLE DRIVE
+1. No Google Cloud Console, crie/selecione um projeto e habilite Google Drive API.
+2. Configure OAuth consent screen e crie credenciais OAuth para um fluxo autorizado.
+3. Gere um refresh token com escopo mínimo necessário para criar arquivos na pasta selecionada. O token precisa pertencer à conta autorizada a gravar nessa pasta.
+4. Crie uma pasta privada no Drive. Não ative compartilhamento público. Copie o ID da pasta para GOOGLE_DRIVE_FOLDER_ID.
+5. Configure os três valores OAuth como secrets do Pages. Nunca cole tokens aqui no chat.
+6. Faça teste com imagem fictícia e confirme no Drive que o arquivo não tem permissão pública.
+
+ETAPA 3 — LOGIN ADMINISTRATIVO
+1. No Cloudflare Zero Trust, crie uma aplicação Self-hosted para seu domínio Pages.
+2. Proteja pelo menos /admin* e /api/admin* com uma política Allow apenas para seu e-mail autorizado.
+3. Copie o AUD da aplicação e o domínio da equipe para as variáveis ACCESS_AUD e ACCESS_TEAM_DOMAIN.
+4. Teste em janela anônima: /admin e /api/admin/registrations devem negar acesso sem login.
+5. A tela inicial de administração é somente leitura. Ações como cancelar, editar, exportar e visualizar foto exigem implementação adicional com autorização e auditoria no servidor.
+
+ETAPA 4 — TESTES ANTES DE DIVULGAR
+- Cadastro válido com foto JPG/PNG/WEBP de até 8 MB.
+- Telefone inválido, estado inválido, foto ausente e arquivo grande devem ser recusados.
+- Dois cadastros simultâneos devem receber códigos distintos.
+- Erro temporário no Google Drive não pode ser apresentado como cadastro concluído.
+- Confirmar que o telefone não aparece no PNG nem em mensagens públicas.
+- Confirmar que nenhuma foto tem permissão pública no Drive.
+- Testar a API administrativa sem login e com login.
+- Verificar backups, acesso mínimo e política de retenção/exclusão de dados.
+
+NOTAS DE SEGURANÇA E LIMITAÇÕES DA VERSÃO INICIAL
+- O código de registro é derivado do ID AUTOINCREMENT do D1. Isso gera códigos únicos no banco, mas falhas podem deixar lacunas na sequência; não se deve prometer sequência sem lacunas.
+- O telefone é dado pessoal. Publique aviso de privacidade com finalidade de uso, contato do responsável, retenção e canal para solicitar correção/exclusão. Colete apenas o necessário e restrinja o acesso.
+- A API pública ainda precisa de proteção antiabuso (por exemplo, Cloudflare Turnstile validado no servidor), limites de taxa e política de retenção de cadastros pendentes antes de ser divulgada amplamente.
+- A auditoria foi criada no schema, mas as operações administrativas ainda precisam gravar nela.
+- Não faça deploy público até completar as etapas e testar as configurações.

@@ -1,0 +1,11 @@
+name = "carteira-patriota-nordestino"
+pages_build_output_dir = "."
+compatibility_date = "2026-10-22"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "carteira-patriota-nordestino"
+database_id = "PREENCHER_COM_O_ID_REAL_DO_D1"
+
+[vars]
+GOOGLE_DRIVE_FOLDER_ID = "PREENCHER_COM_ID_DA_PASTA_PRIVADA"
